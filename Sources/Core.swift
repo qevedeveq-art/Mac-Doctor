@@ -38,12 +38,14 @@ func continuousBatterySamples(_ observations:[(Date,Bool)], maxGap:TimeInterval=
 
 func volumeCommand(_ value:Int)->String? { guard (0...100).contains(value) else {return nil}; return "set volume output volume \(value)" }
 
-struct MacMetrics { let cpuW:Double?; let gpuW:Double?; let systemW:Double?; let cpuTemp:Double? }
+struct FanReading:Identifiable { let id:Int; let rpm:Double?; let maximumRPM:Double? }
+struct MacMetrics { let cpuW:Double?; let gpuW:Double?; let systemW:Double?; let cpuTemp:Double?; let gpuTemp:Double?; let fans:[FanReading] }
 func parseMacmon(_ text:String)->MacMetrics? {
  guard let line=text.split(separator:"\n").last, let data=String(line).data(using:.utf8), let object=(try? JSONSerialization.jsonObject(with:data)) as? [String:Any] else{return nil}
  func positive(_ value:Any?, max:Double)->Double? { guard let x=value as? Double, x.isFinite, x>0, x<=max else{return nil};return x }
  let temp=object["temp"] as? [String:Any] ?? [:]
- return MacMetrics(cpuW:positive(object["cpu_power"],max:500),gpuW:positive(object["gpu_power"],max:500),systemW:positive(object["sys_power"],max:500),cpuTemp:positive(temp["cpu_temp_avg"],max:150))
+ let fans=((object["fans"] as? [[String:Any]]) ?? []).prefix(16).enumerated().map { index,fan in FanReading(id:index,rpm:positive(fan["rpm"],max:30000),maximumRPM:positive(fan["max_rpm"],max:30000)) }
+ return MacMetrics(cpuW:positive(object["cpu_power"],max:500),gpuW:positive(object["gpu_power"],max:500),systemW:positive(object["sys_power"],max:500),cpuTemp:positive(temp["cpu_temp_avg"],max:150),gpuTemp:positive(temp["gpu_temp_avg"],max:150),fans:fans)
 }
 struct MoleItem { let name:String; let path:String; let bytes:Int64; let status:String? }
 func parseMoleAnalysis(_ data:Data)->(items:[MoleItem],status:String?)? {

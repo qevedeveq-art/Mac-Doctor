@@ -15,6 +15,10 @@ import Foundation
   let parsed=parseMacmon("{\"cpu_power\":2.5,\"gpu_power\":0,\"sys_power\":8,\"temp\":{\"cpu_temp_avg\":45}}")
   check(parsed?.cpuW==2.5 && parsed?.gpuW==nil && parsed?.systemW==8 && parsed?.cpuTemp==45,"macmon valeurs et indisponibilité")
   check(parseMacmon("non-json")==nil,"macmon JSON invalide")
+  let sensorSample=parseMacmon("{\"temp\":{\"gpu_temp_avg\":42},\"fans\":[{\"rpm\":0,\"max_rpm\":7800},{\"rpm\":2500,\"max_rpm\":8000},{\"rpm\":99999}]}")
+  check(sensorSample?.gpuTemp == 42 && sensorSample?.fans.count == 3,"capteurs GPU et ventilateurs")
+  check(sensorSample?.fans[0].rpm == nil && sensorSample?.fans[0].maximumRPM == 7800,"vitesse nulle non interprétée")
+  check(sensorSample?.fans[1].rpm == 2500 && sensorSample?.fans[2].rpm == nil,"vitesses de ventilateur valides et invalides")
   let moleData="{\"entries\":[{\"name\":\"A\",\"path\":\"/tmp/A\",\"size\":1024}]}".data(using:.utf8)!
   let scan=parseMoleAnalysis(moleData); check(scan?.items.count==1 && scan?.items.first?.bytes==1024 && scan?.status==nil,"Mole sans indication de complétude")
   check(parseMoleAnalysis(Data("{}".utf8))==nil,"Mole sans liste")
