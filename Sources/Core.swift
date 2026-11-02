@@ -92,3 +92,20 @@ func shouldConserve(profile:CollectionProfile,lowPower:Bool,onBattery:Bool?)->Bo
 }
 
 func batteryMaximumGap(interval:TimeInterval)->TimeInterval { max(45, min(180, interval * 1.8)) }
+
+struct NetworkCounters { let received:UInt64; let sent:UInt64; let interfaces:Set<String> }
+struct NetworkRate { let received:Double; let sent:Double }
+func networkRate(previous:NetworkCounters,current:NetworkCounters,seconds:TimeInterval)->NetworkRate? {
+ guard seconds > 0, seconds.isFinite, previous.interfaces == current.interfaces, !current.interfaces.isEmpty, current.received >= previous.received, current.sent >= previous.sent else {return nil}
+ return NetworkRate(received:Double(current.received-previous.received)/seconds,sent:Double(current.sent-previous.sent)/seconds)
+}
+func readNetworkCounters()->NetworkCounters? {
+ var list:UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&list) == 0, let first=list else{return nil}; defer{freeifaddrs(list)}
+ var rx:UInt64=0, tx:UInt64=0, names=Set<String>(); var cursor:UnsafeMutablePointer<ifaddrs>?=first
+ while let item=cursor { let entry=item.pointee; defer{cursor=entry.ifa_next}; guard let address=entry.ifa_addr, address.pointee.sa_family == UInt8(AF_LINK), entry.ifa_flags & UInt32(IFF_UP) != 0, entry.ifa_flags & UInt32(IFF_LOOPBACK) == 0, let data=entry.ifa_data, let name=entry.ifa_name else{continue}; let key=String(cString:name); guard names.insert(key).inserted else{continue}; let stats=data.assumingMemoryBound(to:if_data.self).pointee; rx += UInt64(stats.ifi_ibytes); tx += UInt64(stats.ifi_obytes) }
+ return names.isEmpty ? nil : NetworkCounters(received:rx,sent:tx,interfaces:names)
+}
+final class NetworkTracker {
+ private var previous:(NetworkCounters,Date)?; private var generation:Int = -1
+ func sample(generation:Int)->NetworkRate? { if self.generation != generation {previous=nil;self.generation=generation}; guard let counters=readNetworkCounters() else{previous=nil;return nil};let now=Date(); defer{previous=(counters,now)};guard let old=previous else{return nil};return networkRate(previous:old.0,current:counters,seconds:now.timeIntervalSince(old.1)) }
+}
