@@ -41,6 +41,11 @@ import Foundation
   check(!shouldConserve(profile:.balanced,lowPower:false,onBattery:false),"secteur connu : collecteur possible")
   check(shouldConserve(profile:.balanced,lowPower:false,onBattery:true),"sur batterie : mode prudent")
   check(batteryMaximumGap(interval:8)==45,"tolérance des relevés rapides"); check(batteryMaximumGap(interval:60)==108,"tolérance du profil économie"); check(batteryMaximumGap(interval:1000)==180,"plafond du trou de mesure")
+  check(readingFreshness(last:nil,now:now,interval:8,paused:false) == .unavailable,"mesure absente")
+  check(readingFreshness(last:now,now:now,interval:8,paused:true) == .paused,"mesure en pause")
+  check(readingFreshness(last:now.addingTimeInterval(-50),now:now,interval:60,paused:false) == .current,"mesure récente en mode économie")
+  check(readingFreshness(last:now.addingTimeInterval(-151),now:now,interval:60,paused:false) == .stale,"mesure ancienne")
+  check(readingFreshness(last:now.addingTimeInterval(5),now:now,interval:8,paused:false) == .stale,"horodatage futur")
   let ok=boundedCommand("/bin/echo",["bonjour"],timeout:2); check(ok.succeeded && ok.output.contains("bonjour"),"commande normale")
   let fail=boundedCommand("/usr/bin/false",[],timeout:2); check(!fail.succeeded && !fail.timedOut,"code d’échec")
   let child=Process(); child.executableURL=URL(fileURLWithPath:"/bin/sleep"); child.arguments=["30"]; try! child.run(); let id=child.processIdentifier

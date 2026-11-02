@@ -93,6 +93,15 @@ func shouldConserve(profile:CollectionProfile,lowPower:Bool,onBattery:Bool?)->Bo
 
 func batteryMaximumGap(interval:TimeInterval)->TimeInterval { max(45, min(180, interval * 1.8)) }
 
+enum ReadingFreshness:Equatable { case unavailable, paused, current, stale }
+func readingFreshness(last:Date?, now:Date, interval:TimeInterval, paused:Bool)->ReadingFreshness {
+ guard let last=last else{return .unavailable}
+ if paused{return .paused}
+ let age=now.timeIntervalSince(last)
+ guard age >= 0, interval.isFinite, interval > 0 else{return .stale}
+ return age <= max(30,interval*2.5) ? .current : .stale
+}
+
 struct NetworkCounters { let received:UInt64; let sent:UInt64; let interfaces:Set<String> }
 struct NetworkRate { let received:Double; let sent:Double }
 func networkRate(previous:NetworkCounters,current:NetworkCounters,seconds:TimeInterval)->NetworkRate? {

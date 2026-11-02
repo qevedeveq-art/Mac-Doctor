@@ -6,6 +6,7 @@ Application macOS locale pour examiner les ressources, la batterie, les processu
 
 - CPU global et batterie lus via des API natives ; mémoire, GPU et processus complétés par les outils macOS disponibles.
 - Navigation latérale unique : vue d’ensemble, batterie, applications et mémoire, stockage et entretien ; les actions rapides et les réglages restent accessibles depuis chaque vue.
+- Cartes ouvrant les détails correspondants, historique repliable, statut de fraîcheur du dernier relevé et vue matériel regroupant GPU et mesures macmon quand elles sont disponibles. La vitesse des ventilateurs n’est pas encore prise en charge.
 - Stats, s’il est installé, est détecté dans la vue Ressources : ouverture de l’application, accès Finder et mesure ponctuelle de son processus principal. Ses propres données ne sont pas importées ; les collectes de Stats et de MacPilot peuvent se chevaucher.
 - Débits réseau issus des compteurs macOS des interfaces actives, avec historique local. Ce total peut compter plusieurs fois le trafic passant par un VPN ou une interface virtuelle ; une modification des interfaces ou une diminution du total des compteurs interrompt la mesure.
 - Profils Précis, Équilibré et Économie ; fréquence réduite en arrière-plan et sur batterie. Le collecteur avancé est facultatif et suspendu sur batterie et en mode économie.
