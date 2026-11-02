@@ -102,17 +102,21 @@ func readingFreshness(last:Date?, now:Date, interval:TimeInterval, paused:Bool)-
  return age <= max(30,interval*2.5) ? .current : .stale
 }
 
-struct NetworkCounters { let received:UInt64; let sent:UInt64; let interfaces:Set<String> }
-struct NetworkRate { let received:Double; let sent:Double }
+struct InterfaceCounters { let received:UInt64; let sent:UInt64 }
+struct NetworkCounters { let interfaces:[String:InterfaceCounters] }
+struct InterfaceRate:Identifiable { let id:String; let received:Double; let sent:Double }
+struct NetworkRate { let received:Double; let sent:Double; let interfaces:[InterfaceRate] }
 func networkRate(previous:NetworkCounters,current:NetworkCounters,seconds:TimeInterval)->NetworkRate? {
- guard seconds > 0, seconds.isFinite, previous.interfaces == current.interfaces, !current.interfaces.isEmpty, current.received >= previous.received, current.sent >= previous.sent else {return nil}
- return NetworkRate(received:Double(current.received-previous.received)/seconds,sent:Double(current.sent-previous.sent)/seconds)
+ guard seconds > 0, seconds.isFinite, !current.interfaces.isEmpty, Set(previous.interfaces.keys) == Set(current.interfaces.keys) else {return nil}
+ var rates:[InterfaceRate]=[]
+ for name in current.interfaces.keys.sorted() { guard let old=previous.interfaces[name], let new=current.interfaces[name], new.received >= old.received, new.sent >= old.sent else{return nil}; rates.append(InterfaceRate(id:name,received:Double(new.received-old.received)/seconds,sent:Double(new.sent-old.sent)/seconds)) }
+ return NetworkRate(received:rates.reduce(0){$0+$1.received},sent:rates.reduce(0){$0+$1.sent},interfaces:rates)
 }
 func readNetworkCounters()->NetworkCounters? {
  var list:UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&list) == 0, let first=list else{return nil}; defer{freeifaddrs(list)}
- var rx:UInt64=0, tx:UInt64=0, names=Set<String>(); var cursor:UnsafeMutablePointer<ifaddrs>?=first
- while let item=cursor { let entry=item.pointee; defer{cursor=entry.ifa_next}; guard let address=entry.ifa_addr, address.pointee.sa_family == UInt8(AF_LINK), entry.ifa_flags & UInt32(IFF_UP) != 0, entry.ifa_flags & UInt32(IFF_LOOPBACK) == 0, let data=entry.ifa_data, let name=entry.ifa_name else{continue}; let key=String(cString:name); guard names.insert(key).inserted else{continue}; let stats=data.assumingMemoryBound(to:if_data.self).pointee; rx += UInt64(stats.ifi_ibytes); tx += UInt64(stats.ifi_obytes) }
- return names.isEmpty ? nil : NetworkCounters(received:rx,sent:tx,interfaces:names)
+ var entries:[String:InterfaceCounters]=[:]; var cursor:UnsafeMutablePointer<ifaddrs>?=first
+ while let item=cursor { let entry=item.pointee; defer{cursor=entry.ifa_next}; guard let address=entry.ifa_addr, address.pointee.sa_family == UInt8(AF_LINK), entry.ifa_flags & UInt32(IFF_UP) != 0, entry.ifa_flags & UInt32(IFF_LOOPBACK) == 0, let data=entry.ifa_data, let name=entry.ifa_name else{continue}; let key=String(cString:name); guard entries[key] == nil else{continue}; let stats=data.assumingMemoryBound(to:if_data.self).pointee; entries[key]=InterfaceCounters(received:UInt64(stats.ifi_ibytes),sent:UInt64(stats.ifi_obytes)) }
+ return entries.isEmpty ? nil : NetworkCounters(interfaces:entries)
 }
 final class NetworkTracker {
  private var previous:(NetworkCounters,Date)?; private var generation:Int = -1
