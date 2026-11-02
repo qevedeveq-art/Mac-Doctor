@@ -38,6 +38,12 @@ func continuousBatterySamples(_ observations:[(Date,Bool)], maxGap:TimeInterval=
 
 func volumeCommand(_ value:Int)->String? { guard (0...100).contains(value) else {return nil}; return "set volume output volume \(value)" }
 
+func parseGPUUtilization(_ text:String)->Double? {
+ let pattern="\"Device Utilization %\"\\s*=\\s*([0-9]+)"
+ guard let range=text.range(of:pattern,options:.regularExpression), let value=Double(text[range].split(separator:"=").last?.trimmingCharacters(in:.whitespaces) ?? ""), (0...100).contains(value) else{return nil}
+ return value
+}
+
 struct FanReading:Identifiable { let id:Int; let rpm:Double?; let maximumRPM:Double? }
 struct MacMetrics { let cpuW:Double?; let gpuW:Double?; let systemW:Double?; let cpuTemp:Double?; let gpuTemp:Double?; let fans:[FanReading] }
 func parseMacmon(_ text:String)->MacMetrics? {
