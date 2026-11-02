@@ -51,6 +51,14 @@ func parseMoleAnalysis(_ data:Data)->(items:[MoleItem],status:String?)? {
  let items=entries.compactMap{ e -> MoleItem? in guard let name=e["name"] as? String, let path=e["path"] as? String, let value=e["size"] as? NSNumber, value.int64Value >= 0 else{return nil};return MoleItem(name:name,path:path,bytes:value.int64Value,status:e["scan_status"] as? String) }
  return (items,obj["scan_status"] as? String)
 }
+func summarizeMoleHistory(_ data:Data)->String? {
+ guard let object=(try? JSONSerialization.jsonObject(with:data)) as? [String:Any], let sessions=object["sessions"] as? [[String:Any]] else{return nil}
+ if sessions.isEmpty {return "Aucune opération dans l’historique Mole."}
+ return sessions.prefix(200).map { item in
+  let actions=item["actions"] as? [String:Int] ?? [:]
+  return "\(item["started_at"] as? String ?? "Date inconnue") · \(item["command"] as? String ?? "opération")\nÉléments : \(item["items"] as? Int ?? 0) · Taille : \(item["size"] as? String ?? "—") · Échecs : \(actions["failed"] ?? 0)"
+ }.joined(separator:"\n\n") + (sessions.count > 200 ? "\n\nHistorique limité à 200 opérations." : "")
+}
 
 enum CollectionProfile:String,CaseIterable { case precise="Précis", balanced="Équilibré", economy="Économie" }
 func collectionInterval(profile:CollectionProfile, foreground:Bool, onBattery:Bool, lowPower:Bool)->TimeInterval {

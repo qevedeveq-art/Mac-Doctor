@@ -13,7 +13,7 @@ Application macOS locale pour examiner les ressources, la batterie, les processu
 - Profils Précis, Équilibré et Économie ; fréquence réduite en arrière-plan et sur batterie. Le collecteur avancé est facultatif et suspendu sur batterie et en mode économie.
 - Bouton **Optimiser la RAM** : examine les applications et leurs sous-processus, puis propose une fermeture normale après confirmation. La mémoire partagée n’est pas additionnée ; le cache macOS n’est pas vidé artificiellement.
 - Historique SQLite local, durée de conservation réglable, pause, journal et rapport agrégé exportable sans commandes ni noms de processus. L’historique des noms de processus est désactivé par défaut.
-- Mole optionnel : état et analyse JSON dans l’application ; les aperçus et actions interactifs restent dans Terminal. Un résultat sans indication de complétude ne doit pas être considéré comme exhaustif.
+- Mole optionnel : état, analyse de dossier et historique JSON accessibles depuis Stockage ; les aperçus et actions interactifs restent dans Terminal. L’historique est limité à 500 Ko lus et 200 opérations affichées. Un résultat sans indication de complétude ne doit pas être considéré comme exhaustif.
 - Commandes locales : son, veille, verrouillage et raccourcis vers les réglages. La veille et le verrouillage demandent confirmation ; macOS peut demander des autorisations.
 
 ## Prérequis et compilation

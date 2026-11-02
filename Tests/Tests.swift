@@ -18,6 +18,10 @@ import Foundation
   let moleData="{\"entries\":[{\"name\":\"A\",\"path\":\"/tmp/A\",\"size\":1024}]}".data(using:.utf8)!
   let scan=parseMoleAnalysis(moleData); check(scan?.items.count==1 && scan?.items.first?.bytes==1024 && scan?.status==nil,"Mole sans indication de complétude")
   check(parseMoleAnalysis(Data("{}".utf8))==nil,"Mole sans liste")
+  check(summarizeMoleHistory(Data("{\"sessions\":[]}".utf8)) == "Aucune opération dans l’historique Mole.","historique Mole vide")
+  let history=Data("{\"sessions\":[{\"started_at\":\"2026-01-01\",\"command\":\"clean\",\"items\":2,\"size\":\"1 MB\",\"actions\":{\"failed\":1}}]}".utf8)
+  check(summarizeMoleHistory(history)?.contains("Échecs : 1") == true,"historique Mole structuré")
+  check(summarizeMoleHistory(Data("{}".utf8)) == nil,"historique Mole invalide")
   let fixture=FileManager.default.temporaryDirectory.appendingPathComponent("macpilot-test-\(UUID().uuidString)"); try! FileManager.default.createDirectory(at:fixture,withIntermediateDirectories:true); defer { try? FileManager.default.removeItem(at:fixture) }; try! Data(repeating:7,count:2048).write(to:fixture.appendingPathComponent("sample.dat"))
   if FileManager.default.isExecutableFile(atPath:"/opt/homebrew/bin/mo") { let analysis=boundedCommand("/opt/homebrew/bin/mo",["analyze","--json",fixture.path],timeout:15); let realScan=parseMoleAnalysis(Data(analysis.output.utf8)); check(analysis.succeeded && realScan?.items.contains(where:{$0.name=="sample.dat"}) == true,"analyse Mole réelle sur un dossier de test") } else { print("SKIP: Mole absent") }
   if CommandLine.arguments.count > 1 { let sample=boundedCommand(CommandLine.arguments[1],["pipe","-s","2","-i","1000"],timeout:12); let values=parseMacmon(sample.output); check(sample.succeeded && values != nil,"macmon réel : relevé JSON") }
