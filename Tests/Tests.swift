@@ -38,6 +38,17 @@ import Foundation
   check(networkRate(previous:manyA,current:manyB,seconds:2)==nil,"réinitialisation masquée par une autre interface")
   check(rate?.interfaces.first?.id == "en0" && rate?.interfaces.first?.received == 200,"détail réseau par interface")
   check(readNetworkCounters() != nil,"compteurs réseau natifs disponibles")
+  let diskPlist: [[String:Any]] = [["IORegistryEntryID":123,"Statistics":["Bytes (Read)":1000,"Bytes (Write)":2000]]]
+  let diskData=try! PropertyListSerialization.data(fromPropertyList:diskPlist,format:.xml,options:0)
+  let diskCounters=parseDiskCounters(String(decoding:diskData,as:UTF8.self))
+  check(diskCounters?.interfaces["123"]?.received == 1000 && diskCounters?.interfaces["123"]?.sent == 2000,"lecture des compteurs de stockage")
+  check(parseDiskCounters("invalide")==nil,"compteurs de stockage invalides")
+  let diskTracker=DiskTracker(); check(diskTracker.sample(diskCounters,now:now,generation:1)==nil,"premier relevé disque sans débit")
+  let diskNext=NetworkCounters(interfaces:["123":InterfaceCounters(received:3000,sent:4000)])
+  check(diskTracker.sample(diskNext,now:now.addingTimeInterval(2),generation:1)?.received == 1000,"débit disque moyen")
+  check(diskTracker.sample(diskNext,now:now.addingTimeInterval(4),generation:2)==nil,"reprise du stockage après interruption")
+  let realDisks=boundedCommand("/usr/sbin/ioreg",["-r","-c","IOBlockStorageDriver","-d","1","-a"],timeout:8)
+  if realDisks.succeeded { check(parseDiskCounters(realDisks.output) != nil,"compteurs de stockage réels") } else { print("SKIP: compteurs de stockage indisponibles") }
   let nativeBattery=parseBattery(["Current Capacity":86,"Max Capacity":100,"Power Source State":"Battery Power","Is Charging":false]); check(nativeBattery?.percent==86 && nativeBattery?.onBattery==true,"batterie native sur batterie")
   check(parseBattery(["Current Capacity":86,"Max Capacity":0,"Power Source State":"Battery Power"])==nil,"capacité batterie invalide")
   check(parseBattery(["Current Capacity":86,"Max Capacity":100,"Power Source State":"unknown"])==nil,"alimentation inconnue")

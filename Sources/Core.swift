@@ -122,3 +122,24 @@ final class NetworkTracker {
  private var previous:(NetworkCounters,Date)?; private var generation:Int = -1
  func sample(generation:Int)->NetworkRate? { if self.generation != generation {previous=nil;self.generation=generation}; guard let counters=readNetworkCounters() else{previous=nil;return nil};let now=Date(); defer{previous=(counters,now)};guard let old=previous else{return nil};return networkRate(previous:old.0,current:counters,seconds:now.timeIntervalSince(old.1)) }
 }
+
+// The registry identifier keeps counters distinct when devices appear or disappear.
+func parseDiskCounters(_ text:String)->NetworkCounters? {
+ guard let data=text.data(using:.utf8), let entries=(try? PropertyListSerialization.propertyList(from:data,options:[],format:nil)) as? [[String:Any]] else{return nil}
+ var counters:[String:InterfaceCounters]=[:]
+ for entry in entries {
+  guard let id=entry["IORegistryEntryID"] as? NSNumber, let stats=entry["Statistics"] as? [String:Any], let read=stats["Bytes (Read)"] as? NSNumber, let write=stats["Bytes (Write)"] as? NSNumber, read.int64Value >= 0, write.int64Value >= 0 else{continue}
+  let key=id.stringValue; guard counters[key] == nil else{return nil}
+  counters[key]=InterfaceCounters(received:read.uint64Value,sent:write.uint64Value)
+ }
+ return counters.isEmpty ? nil : NetworkCounters(interfaces:counters)
+}
+final class DiskTracker {
+ private var previous:(NetworkCounters,Date)?; private var generation:Int = -1
+ func sample(_ counters:NetworkCounters?,now:Date,generation:Int)->NetworkRate? {
+  if self.generation != generation {previous=nil;self.generation=generation}
+  guard let counters=counters else{previous=nil;return nil}; defer{previous=(counters,now)}
+  guard let old=previous else{return nil}
+  return networkRate(previous:old.0,current:counters,seconds:now.timeIntervalSince(old.1))
+ }
+}
