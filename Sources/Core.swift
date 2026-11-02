@@ -112,6 +112,18 @@ func readingFreshness(last:Date?, now:Date, interval:TimeInterval, paused:Bool)-
  return age <= max(30,interval*2.5) ? .current : .stale
 }
 
+func processObservationWindow(interval:TimeInterval)->TimeInterval { max(60,interval*4.5) }
+func processAverage(_ observations:[(Date,Double)], now:Date, interval:TimeInterval)->Double? {
+ guard interval.isFinite, interval > 0 else{return nil}
+ let window=processObservationWindow(interval:interval)
+ let points=observations.filter { $0.0 <= now && $0.0 >= now.addingTimeInterval(-window) && $0.1.isFinite && $0.1 >= 0 }.sorted { $0.0 < $1.0 }
+ guard points.count >= 4, let first=points.first, let last=points.last,
+       now.timeIntervalSince(last.0) <= max(30,interval*2.5),
+       last.0.timeIntervalSince(first.0) >= max(42,interval*2.5),
+       zip(points,points.dropFirst()).allSatisfy({ $1.0.timeIntervalSince($0.0) > 0 && $1.0.timeIntervalSince($0.0) <= max(30,interval*2.5) }) else{return nil}
+ return points.reduce(0){$0+$1.1}/Double(points.count)
+}
+
 struct InterfaceCounters { let received:UInt64; let sent:UInt64 }
 struct NetworkCounters { let interfaces:[String:InterfaceCounters] }
 struct InterfaceRate:Identifiable { let id:String; let received:Double; let sent:Double }

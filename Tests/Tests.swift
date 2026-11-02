@@ -69,6 +69,12 @@ import Foundation
   check(readingFreshness(last:now.addingTimeInterval(-50),now:now,interval:60,paused:false) == .current,"mesure récente en mode économie")
   check(readingFreshness(last:now.addingTimeInterval(-151),now:now,interval:60,paused:false) == .stale,"mesure ancienne")
   check(readingFreshness(last:now.addingTimeInterval(5),now:now,interval:8,paused:false) == .stale,"horodatage futur")
+  let economyPoints=[(now.addingTimeInterval(-180),40.0),(now.addingTimeInterval(-120),60.0),(now.addingTimeInterval(-60),80.0),(now,100.0)]
+  check(processAverage(economyPoints,now:now,interval:60) == 70,"moyenne de processus en mode économie")
+  check(processAverage(Array(economyPoints.prefix(3)),now:now,interval:60) == nil,"échantillons insuffisants")
+  check(processAverage(economyPoints,now:now.addingTimeInterval(151),interval:60) == nil,"processus non observé récemment")
+  let interrupted=[(now.addingTimeInterval(-250),40.0),(now.addingTimeInterval(-240),60.0),(now.addingTimeInterval(-60),80.0),(now,100.0)]
+  check(processAverage(interrupted,now:now,interval:60) == nil,"interruption des relevés de processus")
   let ok=boundedCommand("/bin/echo",["bonjour"],timeout:2); check(ok.succeeded && ok.output.contains("bonjour"),"commande normale")
   let fail=boundedCommand("/usr/bin/false",[],timeout:2); check(!fail.succeeded && !fail.timedOut,"code d’échec")
   let child=Process(); child.executableURL=URL(fileURLWithPath:"/bin/sleep"); child.arguments=["30"]; try! child.run(); let id=child.processIdentifier
