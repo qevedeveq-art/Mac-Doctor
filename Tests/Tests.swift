@@ -81,6 +81,9 @@ import Foundation
   let interrupted=[(now.addingTimeInterval(-250),40.0),(now.addingTimeInterval(-240),60.0),(now.addingTimeInterval(-60),80.0),(now,100.0)]
   check(processAverage(interrupted,now:now,interval:60) == nil,"interruption des relevés de processus")
   let ok=boundedCommand("/bin/echo",["bonjour"],timeout:2); check(ok.succeeded && ok.output.contains("bonjour"),"commande normale")
+  let oversized=boundedCommand("/usr/bin/head",["-c","4096","/dev/zero"],timeout:2,maximumBytes:64)
+  check(oversized.truncated && !oversized.succeeded && oversized.output.utf8.count <= 64,"sortie limitée non considérée comme complète")
+  check(!boundedCommand("/bin/echo",[],timeout:0).succeeded,"limite de durée invalide")
   let fail=boundedCommand("/usr/bin/false",[],timeout:2); check(!fail.succeeded && !fail.timedOut,"code d’échec")
   let child=Process(); child.executableURL=URL(fileURLWithPath:"/bin/sleep"); child.arguments=["30"]; try! child.run(); let id=child.processIdentifier
   let details=boundedCommand("/bin/ps",["-p",String(id),"-o","user=,lstart=,command="],timeout:3)

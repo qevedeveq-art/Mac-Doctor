@@ -6,9 +6,11 @@ struct CommandResult {
  let output:String
  let exitCode:Int32?
  let timedOut:Bool
- var succeeded:Bool { exitCode == 0 && !timedOut }
+ var truncated:Bool = false
+ var succeeded:Bool { exitCode == 0 && !timedOut && !truncated }
 }
 func boundedCommand(_ path:String,_ args:[String]=[], timeout:TimeInterval=8, maximumBytes:Int=1_000_000)->CommandResult {
+ guard timeout.isFinite, timeout > 0, maximumBytes > 0 else { return CommandResult(output:"Limites de commande invalides.",exitCode:nil,timedOut:false) }
  let task=Process(); task.executableURL=URL(fileURLWithPath:path); task.arguments=args; task.standardInput=FileHandle.nullDevice; var env=ProcessInfo.processInfo.environment; env["LC_ALL"]="C"; task.environment=env
  let url=FileManager.default.temporaryDirectory.appendingPathComponent("macpilot-\(UUID().uuidString)")
  guard FileManager.default.createFile(atPath:url.path,contents:nil,attributes:[.posixPermissions:0o600]), let file=try? FileHandle(forWritingTo:url) else { return CommandResult(output:"Impossible de créer le fichier temporaire.",exitCode:nil,timedOut:false) }
@@ -19,8 +21,9 @@ func boundedCommand(_ path:String,_ args:[String]=[], timeout:TimeInterval=8, ma
  let timedOut=finished.wait(timeout:.now()+timeout) == .timedOut
  if timedOut && task.isRunning { task.terminate(); if finished.wait(timeout:.now()+0.5) == .timedOut && task.isRunning { _=Darwin.kill(task.processIdentifier,SIGKILL) } }
  task.waitUntilExit(); try? file.synchronize()
+ let size=(try? FileManager.default.attributesOfItem(atPath:url.path)[.size] as? NSNumber)?.int64Value
  let read=try? FileHandle(forReadingFrom:url); let data=(try? read?.read(upToCount:maximumBytes)) ?? nil; try? read?.close()
- return CommandResult(output:String(decoding:data ?? Data(),as:UTF8.self),exitCode:task.terminationStatus,timedOut:timedOut)
+ return CommandResult(output:String(decoding:data ?? Data(),as:UTF8.self),exitCode:task.terminationStatus,timedOut:timedOut,truncated:size == nil || size! > Int64(maximumBytes) || data == nil)
 }
 func processIdentityMatches(_ line:String,user:String,start:String,command:String)->Bool {
  let fields=line.trimmingCharacters(in:.whitespacesAndNewlines).split(maxSplits:6,whereSeparator:{$0 == " " || $0 == "\t"})

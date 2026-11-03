@@ -111,6 +111,7 @@ final class Monitor: ObservableObject {
    let response=boundedCommand("/opt/homebrew/bin/mo",["history","--json"],timeout:30,maximumBytes:500_000)
    let message:String
    if response.timedOut { message="Lecture interrompue après 30 secondes ; aucun résultat validé." }
+   else if response.truncated { message="Historique trop volumineux ou illisible ; aucun résultat validé." }
    else if !response.succeeded { message="Historique indisponible ; code \(response.exitCode.map(String.init) ?? "indisponible")." }
    else if let history=summarizeMoleHistory(Data(response.output.utf8)) { message=history }
    else { message="Historique illisible ou trop volumineux ; aucun résultat validé." }
