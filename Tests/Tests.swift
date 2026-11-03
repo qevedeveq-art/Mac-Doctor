@@ -83,6 +83,10 @@ import Foundation
   let ok=boundedCommand("/bin/echo",["bonjour"],timeout:2); check(ok.succeeded && ok.output.contains("bonjour"),"commande normale")
   let oversized=boundedCommand("/usr/bin/head",["-c","4096","/dev/zero"],timeout:2,maximumBytes:64)
   check(oversized.truncated && !oversized.succeeded && oversized.output.utf8.count <= 64,"sortie limitée non considérée comme complète")
+  let continuous=boundedCommand("/usr/bin/yes",[],timeout:2,maximumBytes:16_384)
+  check(continuous.truncated && !continuous.succeeded && continuous.output.utf8.count <= 16_384,"sortie continue interrompue à la limite")
+  let closedOutput=boundedCommand("/bin/sh",["-c","exec >/dev/null 2>&1; exec /bin/sleep 2"],timeout:0.2)
+  check(closedOutput.timedOut && !closedOutput.succeeded,"délai respecté après fermeture de la sortie")
   check(!boundedCommand("/bin/echo",[],timeout:0).succeeded,"limite de durée invalide")
   let fail=boundedCommand("/usr/bin/false",[],timeout:2); check(!fail.succeeded && !fail.timedOut,"code d’échec")
   let child=Process(); child.executableURL=URL(fileURLWithPath:"/bin/sleep"); child.arguments=["30"]; try! child.run(); let id=child.processIdentifier

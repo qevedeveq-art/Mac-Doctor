@@ -45,6 +45,8 @@ L’historique et le journal se trouvent localement dans `~/Library/Application 
 
 Les noms/arguments complets des processus ne sont pas envoyés à un service distant. Les collectes ne doivent pas être présentées comme un diagnostic matériel certain. Les analyses Mole et les commandes système peuvent être partielles ou indisponibles. Avant de fermer une application, enregistrez vos données ; le système peut refuser ou différer sa fermeture.
 
+Les sorties des commandes auxiliaires sont lues en mémoire avec une limite de taille et de durée ; une sortie trop volumineuse est interrompue et ne constitue pas un résultat complet.
+
 ## État des vérifications
 
 La compilation et les tests automatisés du moteur ont été exécutés localement ; les essais d’intégration réels couvrent collecte, migration, Mole, macmon, pause, réveil simulé et arrêt d’un processus temporaire. La vue d’ensemble a été vérifiée visuellement ; les autres parcours, les notifications et les autorisations de verrouillage nécessitent encore des essais manuels. Une mesure ponctuelle du processus graphique, fenêtre ouverte, était d’environ 187 Mio de mémoire résidente ; elle exclut les processus auxiliaires et ne permet pas d’estimer l’autonomie. Les résultats d’un benchmark court ne constituent pas une garantie d’autonomie.

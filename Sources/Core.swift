@@ -12,18 +12,35 @@ struct CommandResult {
 func boundedCommand(_ path:String,_ args:[String]=[], timeout:TimeInterval=8, maximumBytes:Int=1_000_000)->CommandResult {
  guard timeout.isFinite, timeout > 0, maximumBytes > 0 else { return CommandResult(output:"Limites de commande invalides.",exitCode:nil,timedOut:false) }
  let task=Process(); task.executableURL=URL(fileURLWithPath:path); task.arguments=args; task.standardInput=FileHandle.nullDevice; var env=ProcessInfo.processInfo.environment; env["LC_ALL"]="C"; task.environment=env
- let url=FileManager.default.temporaryDirectory.appendingPathComponent("macpilot-\(UUID().uuidString)")
- guard FileManager.default.createFile(atPath:url.path,contents:nil,attributes:[.posixPermissions:0o600]), let file=try? FileHandle(forWritingTo:url) else { return CommandResult(output:"Impossible de créer le fichier temporaire.",exitCode:nil,timedOut:false) }
- defer { try? file.close(); try? FileManager.default.removeItem(at:url) }
- task.standardOutput=file; task.standardError=file
+ let pipe=Pipe(); task.standardOutput=pipe; task.standardError=pipe
  let finished=DispatchSemaphore(value:0); task.terminationHandler={_ in finished.signal()}
- do { try task.run() } catch { return CommandResult(output:error.localizedDescription,exitCode:nil,timedOut:false) }
- let timedOut=finished.wait(timeout:.now()+timeout) == .timedOut
- if timedOut && task.isRunning { task.terminate(); if finished.wait(timeout:.now()+0.5) == .timedOut && task.isRunning { _=Darwin.kill(task.processIdentifier,SIGKILL) } }
- task.waitUntilExit(); try? file.synchronize()
- let size=(try? FileManager.default.attributesOfItem(atPath:url.path)[.size] as? NSNumber)?.int64Value
- let read=try? FileHandle(forReadingFrom:url); let data=(try? read?.read(upToCount:maximumBytes)) ?? nil; try? read?.close()
- return CommandResult(output:String(decoding:data ?? Data(),as:UTF8.self),exitCode:task.terminationStatus,timedOut:timedOut,truncated:size == nil || size! > Int64(maximumBytes) || data == nil)
+ do { try task.run() } catch { try? pipe.fileHandleForReading.close(); try? pipe.fileHandleForWriting.close(); return CommandResult(output:error.localizedDescription,exitCode:nil,timedOut:false) }
+ try? pipe.fileHandleForWriting.close()
+ let fd=pipe.fileHandleForReading.fileDescriptor
+ defer { try? pipe.fileHandleForReading.close() }
+ let flags=fcntl(fd,F_GETFL); if flags >= 0 { _=fcntl(fd,F_SETFL,flags | O_NONBLOCK) }
+ let deadline=ProcessInfo.processInfo.systemUptime+timeout
+ var bytes=Data(); var truncated=false; var failed=false; var timedOut=false; var eof=false
+ var buffer=[UInt8](repeating:0,count:8192)
+ while !eof && !truncated && !failed {
+  let remaining=deadline-ProcessInfo.processInfo.systemUptime
+  if remaining <= 0 {timedOut=true;break}
+  var descriptor=pollfd(fd:fd,events:Int16(POLLIN | POLLHUP),revents:0)
+  let ready=poll(&descriptor,1,Int32(min(100,max(1,remaining*1000))))
+  if ready < 0 {if errno == EINTR {continue};failed=true;break}
+  if ready == 0 {if !task.isRunning {break};continue}
+  let count=Darwin.read(fd,&buffer,buffer.count)
+  if count > 0 { let room=maximumBytes-bytes.count; if count > room { if room > 0 {bytes.append(contentsOf:buffer.prefix(room))}; truncated=true } else {bytes.append(contentsOf:buffer.prefix(count))} }
+  else if count == 0 {eof=true}
+  else if errno != EAGAIN && errno != EINTR {failed=true}
+ }
+ if !timedOut && !truncated && !failed && task.isRunning {
+  let remaining=max(0,deadline-ProcessInfo.processInfo.systemUptime)
+  if finished.wait(timeout:.now()+remaining) == .timedOut {timedOut=true}
+ }
+ if (timedOut || truncated || failed) && task.isRunning { task.terminate(); if finished.wait(timeout:.now()+0.5) == .timedOut && task.isRunning { _=Darwin.kill(task.processIdentifier,SIGKILL) } }
+ task.waitUntilExit()
+ return CommandResult(output:String(decoding:bytes,as:UTF8.self),exitCode:task.terminationStatus,timedOut:timedOut,truncated:truncated || failed)
 }
 func processIdentityMatches(_ line:String,user:String,start:String,command:String)->Bool {
  let fields=line.trimmingCharacters(in:.whitespacesAndNewlines).split(maxSplits:6,whereSeparator:{$0 == " " || $0 == "\t"})
