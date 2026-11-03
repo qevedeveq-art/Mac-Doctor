@@ -41,13 +41,13 @@ Il est aussi possible d’utiliser `MACMON_BIN=/chemin/vers/macmon` pour la comp
 
 ## Données et sécurité
 
-L’historique et le journal se trouvent localement dans `~/Library/Application Support/MacPilotNext/`. Un verrou empêche deux instances de collecter simultanément. L’ancien `history.json` est migré vers SQLite ; les anciennes versions ne lisent pas cet historique migré. La conservation et l’effacement sont configurables depuis l’application.
+L’historique et le journal se trouvent localement dans `~/Library/Application Support/MacPilotNext/`. Le dossier applicatif est limité à l’utilisateur, et la base et le journal ont des permissions `0600`. Un verrou empêche deux instances de collecter simultanément. L’ancien `history.json` est migré vers SQLite ; les anciennes versions ne lisent pas cet historique migré. La conservation et l’effacement sont configurables depuis l’application.
 
 Les noms/arguments complets des processus ne sont pas envoyés à un service distant. Les collectes ne doivent pas être présentées comme un diagnostic matériel certain. Les analyses Mole et les commandes système peuvent être partielles ou indisponibles. Avant de fermer une application, enregistrez vos données ; le système peut refuser ou différer sa fermeture.
 
 ## État des vérifications
 
-La compilation et les tests automatisés du moteur ont été exécutés localement ; les essais d’intégration réels couvrent collecte, migration, Mole, macmon, pause et arrêt d’un processus temporaire. L’interface native, les notifications et les autorisations de verrouillage nécessitent encore des essais manuels. Les résultats d’un benchmark court ne constituent pas une garantie d’autonomie.
+La compilation et les tests automatisés du moteur ont été exécutés localement ; les essais d’intégration réels couvrent collecte, migration, Mole, macmon, pause, réveil simulé et arrêt d’un processus temporaire. La vue d’ensemble a été vérifiée visuellement ; les autres parcours, les notifications et les autorisations de verrouillage nécessitent encore des essais manuels. Une mesure ponctuelle du processus graphique, fenêtre ouverte, était d’environ 187 Mio de mémoire résidente ; elle exclut les processus auxiliaires et ne permet pas d’estimer l’autonomie. Les résultats d’un benchmark court ne constituent pas une garantie d’autonomie.
 
 ## Licences
 

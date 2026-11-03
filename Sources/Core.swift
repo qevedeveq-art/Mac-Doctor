@@ -43,6 +43,14 @@ func parseGPUUtilization(_ text:String)->Double? {
  guard let range=text.range(of:pattern,options:.regularExpression), let value=Double(text[range].split(separator:"=").last?.trimmingCharacters(in:.whitespaces) ?? ""), (0...100).contains(value) else{return nil}
  return value
 }
+func memorySummary(_ text:String)->String {
+ guard let range=text.range(of:"[0-9.]+[KMG] used",options:.regularExpression) else{return text == "Lecture…" ? text : "Mesure indisponible"}
+ let value=String(text[range]).replacingOccurrences(of:" used",with:"")
+ guard let unit=value.last else{return "Mesure indisponible"}
+ let suffix: String
+ switch unit { case "G":suffix="Go"; case "M":suffix="Mo"; case "K":suffix="Ko"; default:return "Mesure indisponible" }
+ return "\(value.dropLast()) \(suffix) utilisés"
+}
 
 struct FanReading:Identifiable { let id:Int; let rpm:Double?; let maximumRPM:Double? }
 struct MacMetrics { let cpuW:Double?; let gpuW:Double?; let systemW:Double?; let cpuTemp:Double?; let gpuTemp:Double?; let fans:[FanReading] }

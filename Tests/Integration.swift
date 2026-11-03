@@ -21,13 +21,18 @@ import AppKit
   check(model!.samples.last?.memoryFree != nil,"marge mémoire lue")
   if let battery=readBattery(), let sampled=model!.samples.last?.battery { check(abs(battery.percent-sampled)<=1,"batterie native cohérente avec le relevé") }
   model!.refresh(); check(wait(45){!model!.busy && model!.samples.count >= 2},"second relevé terminé"); check(model!.samples.last?.cpu != nil && model!.cpu.contains("mesure macOS"),"delta CPU natif utilisable")
+  let beforeWake=model!.samples.count; model!.handleWake(); check(wait(45){!model!.busy && model!.samples.count > beforeWake},"reprise au réveil sans mesure batterie préalable")
   check(model!.latestMacMetrics != nil,"macmon intégré relevé réel")
   check(FileManager.default.fileExists(atPath:root.appendingPathComponent("history.sqlite").path),"historique temporaire écrit")
+  let dbPermissions=try FileManager.default.attributesOfItem(atPath:root.appendingPathComponent("history.sqlite").path)[.posixPermissions] as? NSNumber
+  check(dbPermissions?.intValue == 0o600,"historique privé")
   guard let p=model!.processes.first(where:{$0.id==child.processIdentifier}) else {fputs("FAIL: processus de test introuvable\n",stderr);exit(1)}
   check(model!.isSame(p),"identité du processus de test vérifiée")
   let result=model!.terminate(p); check(result.hasPrefix("Demande"),"demande d’arrêt du processus de test")
   check(wait(5){!child.isRunning},"processus de test arrêté")
   check(FileManager.default.fileExists(atPath:root.appendingPathComponent("actions.json").path),"journal temporaire écrit")
+  let actionPermissions=try FileManager.default.attributesOfItem(atPath:root.appendingPathComponent("actions.json").path)[.posixPermissions] as? NSNumber
+  check(actionPermissions?.intValue == 0o600,"journal privé")
   model!.analyzeFolder(fixture); check(wait(30){!model!.storageBusy},"analyse Mole terminée")
   check(model!.storageRows.contains(where:{$0.url.lastPathComponent == "sample.dat"}),"élément du dossier de test présent")
   model!.readMoleStatus(); check(wait(30){!model!.moleStatusBusy},"état Mole terminé")

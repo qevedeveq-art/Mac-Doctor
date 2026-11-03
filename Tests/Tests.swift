@@ -15,6 +15,8 @@ import Foundation
   check(parseGPUUtilization("\"Device Utilization %\" = 42") == 42,"utilisation GPU")
   check(parseGPUUtilization("\"Device Utilization %\" = 0") == 0,"GPU inactif")
   check(parseGPUUtilization("\"Device Utilization %\" = 101") == nil && parseGPUUtilization("absent") == nil,"mesure GPU invalide ou absente")
+  check(memorySummary("PhysMem: 46G used (4322M wired), 96M unused.") == "46 Go utilisés","résumé mémoire lisible")
+  check(memorySummary("RAM indisponible") == "Mesure indisponible","résumé mémoire sans valeur")
   let parsed=parseMacmon("{\"cpu_power\":2.5,\"gpu_power\":0,\"sys_power\":8,\"temp\":{\"cpu_temp_avg\":45}}")
   check(parsed?.cpuW==2.5 && parsed?.gpuW==nil && parsed?.systemW==8 && parsed?.cpuTemp==45,"macmon valeurs et indisponibilité")
   check(parseMacmon("non-json")==nil,"macmon JSON invalide")

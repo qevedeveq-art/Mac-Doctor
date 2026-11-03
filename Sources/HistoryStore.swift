@@ -7,7 +7,7 @@ final class HistoryStore {
  init(url:URL) throws {
   let status=sqlite3_open_v2(url.path,&db,SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE|SQLITE_OPEN_FULLMUTEX,nil)
   guard status == SQLITE_OK else { let message=db.map{String(cString:sqlite3_errmsg($0))} ?? "ouverture impossible"; if let db=db {sqlite3_close(db)}; self.db=nil; throw NSError(domain:"MacPilotHistory",code:Int(status),userInfo:[NSLocalizedDescriptionKey:message]) }
-  do { try execute("CREATE TABLE IF NOT EXISTS samples (id TEXT PRIMARY KEY, t REAL NOT NULL, data BLOB NOT NULL)"); try execute("CREATE INDEX IF NOT EXISTS sample_time ON samples(t)") } catch { if let db=db {sqlite3_close(db)}; self.db=nil; throw error }
+  do { try FileManager.default.setAttributes([.posixPermissions:0o600],ofItemAtPath:url.path); try execute("CREATE TABLE IF NOT EXISTS samples (id TEXT PRIMARY KEY, t REAL NOT NULL, data BLOB NOT NULL)"); try execute("CREATE INDEX IF NOT EXISTS sample_time ON samples(t)") } catch { if let db=db {sqlite3_close(db)}; self.db=nil; throw error }
  }
  deinit { if let db=db {sqlite3_close(db)} }
  private func fail(_ code:Int32)->NSError { NSError(domain:"MacPilotHistory",code:Int(code),userInfo:[NSLocalizedDescriptionKey:db.map{String(cString:sqlite3_errmsg($0))} ?? "Base inaccessible"]) }
